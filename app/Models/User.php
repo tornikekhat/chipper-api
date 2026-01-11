@@ -7,6 +7,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class User extends Authenticatable
 {
@@ -48,6 +49,26 @@ class User extends Authenticatable
     public function favorites(): HasMany
     {
         return $this->hasMany(Favorite::class);
+    }
+
+    public function favoritedUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'favorites',
+            'user_id',
+            'favoritable_id'
+        )->wherePivot('favoritable_type', self::class);
+    }
+
+    public function favoritedBy(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            User::class,
+            'favorites',
+            'favoritable_id',
+            'user_id'
+        )->wherePivot('favoritable_type', self::class);
     }
 
     public function posts(): HasMany

@@ -4,7 +4,10 @@ namespace Tests\Feature;
 
 use Illuminate\Support\Arr;
 use App\Models\User;
+use App\Models\Post;
+use App\Notifications\NewPostNotification;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class PostTest extends TestCase
@@ -124,5 +127,147 @@ class PostTest extends TestCase
         $this->assertDatabaseMissing('posts', [
             'id' => $id,
         ]);
+    }
+
+    public function test_users_who_favorited_author_receive_notification_when_post_is_created()
+    {
+        Notification::fake();
+
+        $author = User::factory()->create(['name' => 'John Doe']);
+        $follower1 = User::factory()->create(['name' => 'Follower One']);
+        $follower2 = User::factory()->create(['name' => 'Follower Two']);
+        $nonFollower = User::factory()->create(['name' => 'Non Follower']);
+
+        $this->actingAs($follower1)
+            ->postJson(route('users.favorites.store', ['user' => $author]))
+            ->assertCreated();
+
+        $this->actingAs($follower2)
+            ->postJson(route('users.favorites.store', ['user' => $author]))
+            ->assertCreated();
+
+        $response = $this->actingAs($author)->postJson(route('posts.store'), [
+            'title' => 'New Post Title',
+            'body' => 'New post body content.',
+        ]);
+
+        $response->assertCreated();
+
+        Notification::assertSentTo(
+            [$follower1, $follower2],
+            NewPostNotification::class,
+            function ($notification, $channels, $notifiable) use ($author) {
+                return $notification->post->user_id === $author->id
+                    && in_array('mail', $channels);
+            }
+        );
+
+        Notification::assertNotSentTo(
+            [$nonFollower],
+            NewPostNotification::class
+        );
+    }
+
+    public function test_author_does_not_receive_notification_for_own_post()
+    {
+        Notification::fake();
+
+        $author = User::factory()->create(['name' => 'John Doe']);
+
+        $response = $this->actingAs($author)->postJson(route('posts.store'), [
+            'title' => 'My Own Post',
+            'body' => 'This is my own post.',
+        ]);
+
+        $response->assertCreated();
+
+        Notification::assertNotSentTo(
+            [$author],
+            NewPostNotification::class
+        );
+    }
+
+    public function test_no_notifications_sent_when_author_has_no_followers()
+    {
+        Notification::fake();
+
+        $author = User::factory()->create(['name' => 'John Doe']);
+
+        $response = $this->actingAs($author)->postJson(route('posts.store'), [
+            'title' => 'Post Without Followers',
+            'body' => 'This post has no followers.',
+        ]);
+
+        $response->assertCreated();
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_notification_email_contains_correct_content()
+    {
+        Notification::fake();
+
+        $author = User::factory()->create(['name' => 'Jane Smith']);
+        $follower = User::factory()->create(['name' => 'Follower']);
+
+        $this->actingAs($follower)
+            ->postJson(route('users.favorites.store', ['user' => $author]))
+            ->assertCreated();
+
+        $response = $this->actingAs($author)->postJson(route('posts.store'), [
+            'title' => 'Amazing Post Title',
+            'body' => 'This is the post body content.',
+        ]);
+
+        $postId = Arr::get($response->json(), 'data.id');
+
+        $response->assertCreated();
+
+        Notification::assertSentTo(
+            $follower,
+            NewPostNotification::class,
+            function ($notification) use ($author, $postId, $follower) {
+                $mailData = $notification->toMail($follower);
+
+                return $notification->post->title === 'Amazing Post Title'
+                    && $notification->post->body === 'This is the post body content.'
+                    && $notification->post->user->name === 'Jane Smith'
+                    && str_contains($mailData->subject, 'Jane Smith')
+                    && str_contains($mailData->subject, 'created a new post');
+            }
+        );
+    }
+
+    public function test_post_creation_response_is_not_delayed_by_notifications()
+    {
+        Notification::fake();
+
+        $author = User::factory()->create();
+        $followers = User::factory()->count(10)->create();
+
+        foreach ($followers as $follower) {
+            $this->actingAs($follower)
+                ->postJson(route('users.favorites.store', ['user' => $author]))
+                ->assertCreated();
+        }
+
+        $startTime = microtime(true);
+        
+        $response = $this->actingAs($author)->postJson(route('posts.store'), [
+            'title' => 'Quick Post',
+            'body' => 'This should respond quickly.',
+        ]);
+
+        $endTime = microtime(true);
+        $responseTime = ($endTime - $startTime) * 1000;
+
+        $response->assertCreated();
+
+        $this->assertLessThan(100, $responseTime, 'Post creation response was delayed by notifications');
+
+        Notification::assertSentTo(
+            $followers,
+            NewPostNotification::class
+        );
     }
 }

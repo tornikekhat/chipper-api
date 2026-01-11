@@ -64,7 +64,7 @@ Make sure a user can't favorite himself.
 
 > Please update the following line in this `README.md` file to include your estimate of the time required for completion.
 
-Estimated Time Required: [Your Estimate Here]
+Estimated Time Required: 1h
 
 > After updating the estimate and right before you start coding, commit your changes using the following command:
 `git add README.md && git commit -m "Task 1 estimated" && git push`
@@ -110,7 +110,7 @@ As in the previous task, please make sure to add the relevant tests in `tests/Fe
 
 > Please update the following line in this `README.md` file to include your estimate of the time required for completion.
 
-Estimated Time Required: [Your Estimate Here]
+Estimated Time Required: 15m
 
 > After updating the estimate and right before you start coding, commit your changes using the following command:
 `git add README.md && git commit -m "Task 2 estimated" && git push`
@@ -138,7 +138,7 @@ In addition to the implementation, please ensure comprehensive test coverage for
 
 > Please update the following line in this `README.md` file to include your estimate of the time required for completion.
 
-Estimated Time Required: [Your Estimate Here]
+Estimated Time Required: 30m
 
 > After updating the estimate and right before you start coding, commit your changes using the following command:
 `git add README.md && git commit -m "Task 3 estimated" && git push`
@@ -162,7 +162,7 @@ Ensure that the corresponsing tests are provided for this feature.
 
 > Please update the following line in this `README.md` file to include your estimate of the time required for completion.
 
-Estimated Time Required: [Your Estimate Here]
+Estimated Time Required: 15m
 
 > After updating the estimate and right before you start coding, commit your changes using the following command:
 `git add README.md && git commit -m "Task 4 estimated" && git push`
