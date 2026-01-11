@@ -7,6 +7,7 @@ use App\Models\Post;
 use App\Http\Requests\CreatePostRequest;
 use App\Http\Requests\UpdatePostRequest;
 use App\Http\Requests\DestroyPostRequest;
+use App\Notifications\NewPostNotification;
 
 /**
  * @group Posts
@@ -31,6 +32,13 @@ class PostController extends Controller
             'body' => $request->input('body'),
             'user_id' => $user->id,
         ]);
+
+        $post->load('user');
+
+        $favoritedBy = $user->favoritedBy;
+        foreach ($favoritedBy as $follower) {
+            $follower->notify(new NewPostNotification($post));
+        }
 
         return new PostResource($post);
     }
